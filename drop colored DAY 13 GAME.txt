@@ -1,0 +1,229 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Connect 4 Game</title>
+  <style>
+    body {
+      font-family: 'Arial', sans-serif;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      background-color: #f4f4f9;
+      margin: 0;
+      height: 100vh;
+    }
+
+    header {
+      text-align: center;
+      margin-bottom: 20px;
+    }
+
+    header h1 {
+      font-size: 48px;
+      color: #333;
+      text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.5);
+      letter-spacing: 2px;
+      margin: 0;
+    }
+
+    header p {
+      font-size: 18px;
+      color: #555;
+      margin-top: 10px;
+    }
+
+    #game-board {
+      display: grid;
+      grid-template-columns: repeat(7, 60px);
+      gap: 5px;
+      background-color: #0047ab;
+      padding: 10px;
+      border-radius: 10px;
+      box-shadow: 0 4px 10px rgba(0, 0, 0, 0.2);
+    }
+
+    .cell {
+      width: 60px;
+      height: 60px;
+      background-color: #fff;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+    }
+
+    .cell.red {
+      background-color: #ff4d4d;
+    }
+
+    .cell.yellow {
+      background-color: #ffd700;
+    }
+
+    .cell.winning {
+      border: 3px solid #000;
+      box-shadow: 0 0 10px rgba(0, 0, 0, 0.8);
+    }
+
+    #message {
+      margin-top: 20px;
+      font-size: 18px;
+      color: #333;
+    }
+
+    #reset {
+      margin-top: 10px;
+      padding: 10px 20px;
+      font-size: 16px;
+      background-color: #ff4d4d;
+      color: #fff;
+      border: none;
+      border-radius: 5px;
+      cursor: pointer;
+    }
+
+    #reset:hover {
+      background-color: #d43d3d;
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>Connect 4</h1>
+    <p>A Fun Game of Strategy and Skill</p>
+  </header>
+  <div id="game-board"></div>
+  <div id="message"></div>
+  <button id="reset">Restart Game</button>
+
+  <script>
+    const ROWS = 6;
+    const COLS = 7;
+    let currentPlayer = 'red'; // Red starts first
+    let board = Array.from({ length: ROWS }, () => Array(COLS).fill(null));
+    let timer;
+
+    const gameBoard = document.getElementById('game-board');
+    const message = document.getElementById('message');
+    const resetButton = document.getElementById('reset');
+
+    // Initialize the board
+    function createBoard() {
+      clearTimeout(timer);
+      gameBoard.innerHTML = '';
+      board = Array.from({ length: ROWS }, () => Array(COLS).fill(null));
+      for (let row = 0; row < ROWS; row++) {
+        for (let col = 0; col < COLS; col++) {
+          const cell = document.createElement('div');
+          cell.classList.add('cell');
+          cell.dataset.row = row;
+          cell.dataset.col = col;
+          cell.addEventListener('click', handleMove);
+          gameBoard.appendChild(cell);
+        }
+      }
+      message.textContent = "Red's Turn";
+      currentPlayer = 'red';
+    }
+
+    // Handle a move when a cell is clicked
+    function handleMove(e) {
+      const cell = e.target;
+      const row = +cell.dataset.row;
+      const col = +cell.dataset.col;
+
+      // Prevent changing the color of an already filled cell
+      if (board[row][col]) return;
+
+      // Update board and UI
+      board[row][col] = currentPlayer;
+      cell.classList.add(currentPlayer);
+
+      // Check for a win
+      if (checkWin(row, col)) {
+        highlightWinningLine();
+        message.textContent = `${currentPlayer.toUpperCase()} Wins! Restarting in 30 seconds...`;
+        disableBoard();
+        timer = setTimeout(createBoard, 30000); // Restart game after 30 seconds
+        return;
+      }
+
+      // Check for a draw
+      if (board.flat().every(cell => cell)) {
+        message.textContent = "It's a Draw! Restarting in 30 seconds...";
+        disableBoard();
+        timer = setTimeout(createBoard, 30000); // Restart game after 30 seconds
+        return;
+      }
+
+      // Switch players
+      currentPlayer = currentPlayer === 'red' ? 'yellow' : 'red';
+      message.textContent = `${currentPlayer.toUpperCase()}'s Turn`;
+    }
+
+    // Check for a win
+    function checkWin(row, col) {
+      const directions = [
+        { r: 0, c: 1 }, // Horizontal
+        { r: 1, c: 0 }, // Vertical
+        { r: 1, c: 1 }, // Diagonal down-right
+        { r: 1, c: -1 } // Diagonal down-left
+      ];
+
+      for (const { r, c } of directions) {
+        let count = 1;
+        const line = [[row, col]];
+
+        // Check in one direction
+        for (let i = 1; i < 4; i++) {
+          const rIdx = row + r * i;
+          const cIdx = col + c * i;
+          if (board[rIdx]?.[cIdx] === currentPlayer) {
+            count++;
+            line.push([rIdx, cIdx]);
+          } else break;
+        }
+
+        // Check in the opposite direction
+        for (let i = 1; i < 4; i++) {
+          const rIdx = row - r * i;
+          const cIdx = col - c * i;
+          if (board[rIdx]?.[cIdx] === currentPlayer) {
+            count++;
+            line.push([rIdx, cIdx]);
+          } else break;
+        }
+
+        if (count >= 4) {
+          line.forEach(([r, c]) => {
+            document.querySelector(`.cell[data-row='${r}'][data-col='${c}']`).classList.add('winning');
+          });
+          return true;
+        }
+      }
+
+      return false;
+    }
+
+    // Highlight the winning line
+    function highlightWinningLine() {
+      document.querySelectorAll('.cell').forEach(cell => cell.removeEventListener('click', handleMove));
+    }
+
+    // Disable the board
+    function disableBoard() {
+      document.querySelectorAll('.cell').forEach(cell => cell.removeEventListener('click', handleMove));
+    }
+
+    // Reset the game
+    resetButton.addEventListener('click', createBoard);
+
+    // Create the initial board
+    createBoard();
+  </script>
+</body>
+</html>
